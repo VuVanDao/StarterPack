@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-StarterPackApplication<StarterPack>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.StarterPack.StarterPackApplication",
+      "projectName": "StarterPack",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

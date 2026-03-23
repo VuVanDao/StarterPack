@@ -1,0 +1,35 @@
+services:
+  database:
+    image: mysql:8.4.0
+    restart: always
+    container_name: database
+    environment:
+      MYSQL_DATABASE: "starter-kit-db"
+      MYSQL_USER: "app_user"
+      MYSQL_PASSWORD: "123456"
+      MYSQL_ROOT_PASSWORD: "123456"
+    ports:
+      - "3308:3306"
+    volumes:
+      - starter_kit_db:/var/lib/mysql
+    networks:
+      - app_net
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    ports:
+      - 8025:8025
+      - 1025:1025
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+networks:
+  app_net:
+    driver: bridge
+volumes:
+  starter_kit_db:
