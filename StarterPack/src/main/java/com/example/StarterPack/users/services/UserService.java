@@ -1,15 +1,21 @@
 package com.example.StarterPack.users.services;
 
-import com.example.StarterPack.users.repositories.passwordResetTokenRepository;
+import java.io.IOException;
+
 import org.jobrunr.scheduling.BackgroundJobRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.example.StarterPack.s3.UploadedFile;
+import com.example.StarterPack.s3.Repositories.UploadedFileRepository;
+import com.example.StarterPack.s3.Services.FileUploadService;
 import com.example.StarterPack.users.PasswordResetToken;
 import com.example.StarterPack.users.User;
 import com.example.StarterPack.users.VerificationCode;
 import com.example.StarterPack.users.data.UpdateUserPasswordRequest;
+import com.example.StarterPack.users.data.UpdateUserRequest;
 import com.example.StarterPack.users.data.createUserRequest;
 import com.example.StarterPack.users.data.userResponse;
 import com.example.StarterPack.users.jobs.SendResetPasswordEmailJob;
@@ -18,6 +24,7 @@ import com.example.StarterPack.users.repositories.PasswordResetTokenRepository;
 import com.example.StarterPack.users.repositories.UserRepository;
 import com.example.StarterPack.users.repositories.VerificationCodeRepository;
 import com.example.StarterPack.utils.Exception.ApiException;
+import com.example.StarterPack.utils.Security.SecurityUtil;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +37,9 @@ public class UserService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserRepository _UserRepository;
     private final VerificationCodeRepository _VerificationCodeRepository;
-
+    private final PasswordEncoder _PasswordEncoder;
+    private final FileUploadService _FileUploadService;
+    private final UploadedFileRepository _UploadedFileRepository;
     private userResponse convertToDto(User user) {
         return userResponse.builder()
                 .email(user.getEmail())
@@ -45,6 +54,7 @@ public class UserService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .password(encodePassword(request.getPassword()))
+                .verified(false)
                 .build();
         _UserRepository.save(user);
         sendVerificationEmail(user);
@@ -102,22 +112,65 @@ public class UserService {
 
     @Transactional
     public void resetPassword(UpdateUserPasswordRequest request) {
+        // tìm token reset password
         PasswordResetToken passwordResetToken = passwordResetTokenRepository
                 .findByToken(request.getPasswordResetToken())
                 .orElseThrow(
                         () -> ApiException.builder().status(404).message("Password reset token not found").build());
-
+        // nếu token hết hạn thì nhót
         if (passwordResetToken.isExpired()) {
             throw ApiException.builder().status(400).message("Password reset token is expired").build();
         }
-
+        // tìm user và set password mới
         User user = passwordResetToken.getUser();
         user.setPassword(encodePassword(request.getPassword()));
         _UserRepository.save(user);
     }
 
-    private String encodePassword(String password){
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        return passwordEncoder.encode(password);
+    private String encodePassword(String password) {
+        return _PasswordEncoder.encode(password);
+    }
+    
+    @Transactional
+    public userResponse update(UpdateUserRequest request) {
+        User user = SecurityUtil.getAuthenticatedUser();
+        user = _UserRepository.getReferenceById(user.getId());
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user = _UserRepository.save(user);
+        return userResponse.builder().firstName(user.getFirstName()).lastName(user.getLastName()).build();
+    }
+    
+    @Transactional
+    public userResponse updatePassword(UpdateUserPasswordRequest request) {
+        User user = SecurityUtil.getAuthenticatedUser();
+        if (user.getPassword() != null && !_PasswordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw ApiException.builder().status(400).message("Wrong password").build();
+        }
+
+        user.setPassword(encodePassword(request.getPassword()));
+        _UserRepository.save(user);
+        return userResponse.builder().firstName(user.getFirstName()).lastName(user.getLastName()).email(user.getEmail())
+                .build();
+    }
+    
+    public userResponse updateProfilePicture(MultipartFile file) {
+        System.out.println("----------------------UserService.updateProfilePicture----------------------");
+            User user = SecurityUtil.getAuthenticatedUser();
+            UploadedFile uploadedFile = new UploadedFile(file.getOriginalFilename(), file.getSize(), user);
+        try {
+            String url = _FileUploadService.uploadFile(
+                uploadedFile.buildPath("profile-picture"),
+                    file.getBytes());
+            System.out.println("URL: "+ url);
+            uploadedFile.onUploaded(url);
+            user.setProfileImageUrl(url);
+            _UserRepository.save(user);
+            _UploadedFileRepository.save(uploadedFile);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return  userResponse.builder().email(user.getEmail()).profileImageUrl(user.getProfileImageUrl()).build();
     }
 }

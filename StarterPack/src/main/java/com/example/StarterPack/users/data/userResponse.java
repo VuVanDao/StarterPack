@@ -33,13 +33,14 @@ public class userResponse {
     private Long id;
     private Role role;
     private List<String> authorities = new ArrayList<>();
+    String profileImageUrl;
     public userResponse(User user, Collection<? extends GrantedAuthority> authorities) {
         this.id = user.getId();
         this.role = user.getRole();
         this.firstName = user.getFirstName();
         this.lastName = user.getLastName();
         this.email = user.getEmail();
-        // this.profileImageUrl = user.getProfileImageUrl();
+        this.profileImageUrl = user.getProfileImageUrl();
         // user.getConnectedAccounts().forEach((provider) -> {
         // this.connectedAccounts.add(new ConnectedAccountResponse(provider.getProvider(), provider.getConnectedAt()));
         // });

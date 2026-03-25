@@ -1,0 +1,18 @@
+http://localhost:80 {
+    # 1. Các API request sẽ được điều hướng vào Spring Boot ở cổng 8080 trên máy Host
+    route /api/* {
+        reverse_proxy http://host.docker.internal:8080
+    }
+    # 2. Cấu hình cho OAuth2 (Cũng trỏ vào Spring Boot)
+    route /oauth2/authorization/* {
+        reverse_proxy http://host.docker.internal:8080
+    }
+
+    route /login/oauth2/code/* {
+        reverse_proxy http://host.docker.internal:8080
+    }
+    # 3. Mọi request còn lại (Frontend) sẽ trỏ vào Frontend App (ví dụ React/Vue ở cổng 3000)
+    route * {
+        reverse_proxy http://host.docker.internal:3000
+    }
+}

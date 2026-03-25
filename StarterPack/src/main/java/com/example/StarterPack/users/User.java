@@ -38,7 +38,7 @@ public class User extends AbstractEntity implements UserDetails{
     String firstName;
     String lastName;
     Boolean verified = false;
-
+    private String profileImageUrl;
     @OneToOne(mappedBy = "user")
     private VerificationCode verificationCode;
     

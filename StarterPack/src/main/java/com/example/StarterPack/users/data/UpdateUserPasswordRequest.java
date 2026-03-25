@@ -16,7 +16,7 @@ public class UpdateUserPasswordRequest {
   private String oldPassword;
   @NotNull
   @Length(min = 8)
-  @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).*$", message = "must contain at least one uppercase letter, one lowercase letter, and one digit.")
+  @Pattern(regexp = "^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?\":{}|<>]).{6,}$" , message = "password must at least 6 character, one special character and one upper case")
   private String password;
   private String confirmPassword;
   private String passwordResetToken;
